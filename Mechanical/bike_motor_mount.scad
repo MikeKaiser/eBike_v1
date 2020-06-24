@@ -54,33 +54,54 @@ module shaft25mm( len )
 	cylinder(r=12.5,h=len, $fn=120);
 }
 
+module LimitPin()
+{
+	translate([-19, -15, -500])
+	cylinder(d=10+(radialFudge*2),h=1000,$fn=60);
+}
+
+module LimitPinSweep()
+{
+	// Simulate the motor swing back
+	for( angle=[-15:0.5:1] )
+	{
+		rotate([0,0,angle]) LimitPin();
+	}
+}
 
 module SmallArm()
 {
 	difference()
 	{
-		union()
+		rotate([0,0,-90])
 		{
-			// Pivot End
-			pivotRadius = (19 + extraPivotMeat) / 2;
-			cylinder( r=pivotRadius, h=armThick, $fn=240 );
-			
-			// Arm
-			translate([0,armLen,0]) cylinder( r=pivotRadius, h=armThick, $fn=240 );
-			
-			// Motor End
-			translate([-pivotRadius,0,0]) cube([pivotRadius*2,armLen,armThick]);
-		}
-		
-		//Pivot attachment point
-		translate([0,0,-0.1]) shaft10mmOversize( 20 ); // this creates the lip that the two bearings rest on
-		translate([0,0,-0.1]) bearing10mm( false );
-		translate([0,0,6+0.1]) bearing10mm( false );
+			difference()
+			{
+				union()
+				{
+					// Pivot End
+					pivotRadius = (19 + extraPivotMeat) / 2;
+					cylinder( r=pivotRadius, h=armThick, $fn=240 );
+					
+					// Arm
+					translate([0,armLen,0]) cylinder( r=pivotRadius, h=armThick, $fn=240 );
+					
+					// Motor End
+					translate([-pivotRadius,0,0]) cube([pivotRadius*2,armLen,armThick]);
+				}
+				
+				//Pivot attachment point
+				translate([0,0,-0.1]) shaft10mmOversize( 20 ); // this creates the lip that the two bearings rest on
+				translate([0,0,-0.1]) bearing10mm( false );
+				translate([0,0,6+0.1]) bearing10mm( false );
 
-		// Motor attachment point
-		translate([0,armLen,-0.1]) shaft10mmOversize( 20 );
-		translate([0,armLen,-0.1]) bearing10mm( false );
-		translate([0,armLen,6+0.1]) bearing10mm( false );
+				// Motor attachment point
+				translate([0,armLen,-0.1]) shaft10mmOversize( 20 );
+				translate([0,armLen,-0.1]) bearing10mm( false );
+				translate([0,armLen,6+0.1]) bearing10mm( false );
+			}
+		}
+		LimitPinSweep();
 	}
 }
 
@@ -88,40 +109,45 @@ module BigArm()
 {
 	difference()
 	{
-		hull()
+		rotate([0,0,-90])
+		difference()
 		{
-			// Pivot End
-			pivotRadius = (19 + extraPivotMeat) / 2;
-			cylinder( r=pivotRadius, h=armThick, $fn=240 );
-			translate([0,armLen,0]) cylinder( r=pivotRadius, h=armThick, $fn=240 );
+			hull()
+			{
+				// Pivot End
+				pivotRadius = (19 + extraPivotMeat) / 2;
+				cylinder( r=pivotRadius, h=armThick, $fn=240 );
+				translate([0,armLen,0]) cylinder( r=pivotRadius, h=armThick, $fn=240 );
 
 
-			// Motor End
-			motorMountRadius = motorPlateRadius + motorPlateExtra - motorCornerRoundingRadius;
+				// Motor End
+				motorMountRadius = motorPlateRadius + motorPlateExtra - motorCornerRoundingRadius;
+				for(angle=[45:90:360])
+				{
+					translate([0,armLen,0])
+						rotate([0,0,angle])
+							translate([motorMountRadius,0,0])
+								cylinder(r=motorCornerRoundingRadius,h=armThick,$fn=60);
+				}
+			
+			}
+			
+			//Pivot attachment point
+			translate([0,0,-0.1]) shaft10mmOversize( 20 );
+			translate([0,0,-0.1]) bearing10mm( false );
+			translate([0,0,6+0.1]) bearing10mm( false );
+
+			// Motor attachment point
+			translate([0,armLen,-0.1]) shaft25mm( 20 );
 			for(angle=[45:90:360])
 			{
 				translate([0,armLen,0])
 					rotate([0,0,angle])
-						translate([motorMountRadius,0,0])
-							cylinder(r=motorCornerRoundingRadius,h=armThick,$fn=60);
+						translate([motorPlateRadius,0,-0.1])
+							cylinder(r=1.5,h=20,$fn=60);
 			}
-		
 		}
-		
-		//Pivot attachment point
-		translate([0,0,-0.1]) shaft10mmOversize( 20 );
-		translate([0,0,-0.1]) bearing10mm( false );
-		translate([0,0,6+0.1]) bearing10mm( false );
-
-		// Motor attachment point
-		translate([0,armLen,-0.1]) shaft25mm( 20 );
-		for(angle=[45:90:360])
-		{
-			translate([0,armLen,0])
-				rotate([0,0,angle])
-					translate([motorPlateRadius,0,-0.1])
-						cylinder(r=1.5,h=20,$fn=60);
-		}
+		LimitPinSweep();
 	}
 }
 
@@ -220,6 +246,8 @@ module MountingBracket()
 		translate([seatPostMinHeight+15,-bracketLen+downTubeRadius+boltHoleRadius,motorLen/2]) BoltPin( boltHoleRadius, boltHeadRadius, motorLen-10 );
 		translate([seatPostMaxHeight-55,-bracketLen+downTubeRadius+boltHoleRadius,motorLen/2]) BoltPin( boltHoleRadius, boltHeadRadius, motorLen-10 );
 		translate([seatPostMinHeight+15,-6,motorLen/2]) BoltPin( boltHoleRadius, boltHeadRadius, motorLen-30 );
+		
+		LimitPin();
 	}
 }
 
@@ -227,14 +255,25 @@ module MountingBracket()
 
 
 
-translate([0,0,motorLen]) SmallArm();
-translate([0,0,-armThick]) BigArm();
-translate([0,armLen,0]) Motor( 0 );
-MountingBracket();
+if(1)
+{
+	translate([0,0,motorLen]) SmallArm();
+	translate([0,0,-armThick]) BigArm();
+	translate([armLen,0,0]) Motor( 0 );
+}
 
+if(1)
+{
+	MountingBracket();
+}
+
+if(0)
+{
 // Half Mounting Bracket
-//difference()
-//{
-//	MountingBracket();
-//	cube([1000, 1000, motorLen], center=true);
-//}
+	difference()
+	{
+		MountingBracket();
+		cube([1000, 1000, motorLen], center=true);
+	}
+}
+
