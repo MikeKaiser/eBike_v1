@@ -22,6 +22,8 @@ boltHoleRadius = 3.1;
 boltHeadRadius = 8;
 seatPostSquareOffRadius = 10;
 seatPostSquareOffChamfer = 3; // purely cosmetic little detail
+limitPinDiameter = 10;
+pivotBoltMaxDiameter = 20;
 
 
 module bearing( hei, rIn, rOut, withHole )
@@ -56,16 +58,40 @@ module shaft25mm( len )
 
 module LimitPin()
 {
-	translate([-19, -15, -500])
-	cylinder(d=10+(radialFudge*2),h=1000,$fn=60);
+	translate([-32, -15, -500])
+	cylinder(d=limitPinDiameter+(radialFudge*2),h=1000,$fn=60);
 }
 
 module LimitPinSweep()
 {
 	// Simulate the motor swing back
-	for( angle=[-15:0.5:1] )
+	for( angle=[0:0.5:20] )
 	{
 		rotate([0,0,angle]) LimitPin();
+	}
+}
+
+module LimitLockingBlock( direction )
+{
+	pivotRadius = (19 + extraPivotMeat) / 2;
+	difference()
+	{
+		hull()
+		{
+			blockOuterRadius = pivotRadius + (limitPinDiameter) + (radialFudge*2);
+			cylinder( r=pivotRadius, h=armThick*2, $fn=240 );
+			//for( angle=[10:-10:-30] ) <- this locks up OpenSCAD
+			{
+				rotate([0,0,10]) translate([-blockOuterRadius,0,0]) cylinder( r=2, h=armThick*2, $fn=240 );
+				rotate([0,0,0]) translate([-blockOuterRadius,0,0]) cylinder( r=2, h=armThick*2, $fn=240 );
+				rotate([0,0,-10]) translate([-blockOuterRadius,0,0]) cylinder( r=2, h=armThick*2, $fn=240 );
+				rotate([0,0,-20]) translate([-blockOuterRadius,0,0]) cylinder( r=2, h=armThick*2, $fn=240 );
+				rotate([0,0,-30]) translate([-blockOuterRadius,0,0]) cylinder( r=2, h=armThick*2, $fn=240 );
+			}
+		}
+		LimitPinSweep();
+		translate([0,0,-10*direction]) cylinder( r=pivotRadius + 2, h=armThick+10, $fn=240 );
+		translate([0,0,-10]) cylinder( d=pivotBoltMaxDiameter, h=armThick*5, $fn=240 );
 	}
 }
 
@@ -277,3 +303,6 @@ if(0)
 	}
 }
 
+translate([0,0,motorLen + armThick]) LimitLockingBlock(1);
+
+translate([0,0,-armThick*3]) LimitLockingBlock(-1);
