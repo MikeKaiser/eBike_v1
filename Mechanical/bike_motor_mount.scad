@@ -24,6 +24,10 @@ seatPostSquareOffRadius = 10;
 seatPostSquareOffChamfer = 3; // purely cosmetic little detail
 limitPinDiameter = 10;
 pivotBoltMaxDiameter = 20;
+spacerThickness = 7.0; // sometimes, if the motor has to be mounted quite low on the seat post, the motor arm may interfere with the frame. This lets us push that out
+escWidth = 45;
+escLength = 100;
+escHeight = 25;
 
 
 module bearing( hei, rIn, rOut, withHole )
@@ -95,6 +99,14 @@ module LimitLockingBlock( direction )
 	}
 }
 
+
+pivotRadius = (19 + extraPivotMeat) / 2;
+
+module PivotOuter(height)
+{
+	cylinder( r=pivotRadius, h=height, $fn=240 );
+}
+
 module SmallArm()
 {
 	difference()
@@ -106,8 +118,7 @@ module SmallArm()
 				union()
 				{
 					// Pivot End
-					pivotRadius = (19 + extraPivotMeat) / 2;
-					cylinder( r=pivotRadius, h=armThick, $fn=240 );
+					PivotOuter(armThick);
 					
 					// Arm
 					translate([0,armLen,0]) cylinder( r=pivotRadius, h=armThick, $fn=240 );
@@ -131,6 +142,20 @@ module SmallArm()
 	}
 }
 
+
+motorMountRadius = motorPlateRadius + motorPlateExtra - motorCornerRoundingRadius;
+
+module MotorMounts( thickness, roundingRadius )
+{
+	for(angle=[45:90:360])
+	{
+		translate([0,armLen,0])
+			rotate([0,0,angle])
+				translate([motorMountRadius,0,0])
+					cylinder(r=roundingRadius,h=thickness,$fn=60);
+	}
+}
+
 module BigArm()
 {
 	difference()
@@ -138,30 +163,35 @@ module BigArm()
 		rotate([0,0,-90])
 		difference()
 		{
-			hull()
+			union()
 			{
-				// Pivot End
-				pivotRadius = (19 + extraPivotMeat) / 2;
-				cylinder( r=pivotRadius, h=armThick, $fn=240 );
-				translate([0,armLen,0]) cylinder( r=pivotRadius, h=armThick, $fn=240 );
-
-
-				// Motor End
-				motorMountRadius = motorPlateRadius + motorPlateExtra - motorCornerRoundingRadius;
-				for(angle=[45:90:360])
+				hull()
 				{
-					translate([0,armLen,0])
-						rotate([0,0,angle])
-							translate([motorMountRadius,0,0])
-								cylinder(r=motorCornerRoundingRadius,h=armThick,$fn=60);
+					// Pivot End
+					PivotOuter(armThick);
+					
+					// Arm
+					translate([0,armLen,0]) cylinder( r=pivotRadius, h=armThick, $fn=240 );
+
+
+					// Motor End
+					MotorMounts(armThick, motorCornerRoundingRadius);
 				}
-			
+				
+				// Pivot Spacer
+				PivotOuter(armThick + spacerThickness);
+				
+				// Motor Spacer
+				hull()
+				{
+					MotorMounts(armThick + spacerThickness, motorCornerRoundingRadius/3);
+				}
 			}
 			
 			//Pivot attachment point
 			translate([0,0,-0.1]) shaft10mmOversize( 20 );
 			translate([0,0,-0.1]) bearing10mm( false );
-			translate([0,0,6+0.1]) bearing10mm( false );
+			translate([0,0,6+0.1+spacerThickness]) bearing10mm( false );
 
 			// Motor attachment point
 			translate([0,armLen,-0.1]) shaft25mm( 20 );
@@ -277,14 +307,106 @@ module MountingBracket()
 	}
 }
 
+module RoundedBox( x, y, z, r )
+{
+		hull()
+		{
+			translate([-x, -y, -z])sphere(r, $fn=50);
+			translate([ x, -y, -z])sphere(r, $fn=50);
+			translate([-x,  y, -z])sphere(r, $fn=50);
+			translate([ x,  y, -z])sphere(r, $fn=50);
+			translate([-x, -y,  z])sphere(r, $fn=50);
+			translate([ x, -y,  z])sphere(r, $fn=50);
+			translate([-x,  y,  z])sphere(r, $fn=50);
+			translate([ x,  y,  z])sphere(r, $fn=50);
+		}
+}
+
+module RoundedShell( irad, orad )
+{
+	echo( "OR:", orad, " IR:", irad );
+	difference()
+	{
+		RoundedBox(escWidth/2, escLength/2, escHeight/2, orad);
+		RoundedBox(escWidth/2, escLength/2, escHeight/2, irad);
+	}
+}
+
+module ControllerBox( slice )
+{
+	rimDepth = 0.5;
+	halfRimDepth = rimDepth / 2;
+	
+	translate([-110,-bracketLen,escHeight/2])
+	difference()
+	{
+		union()
+		{
+			// The Box
+			difference()
+			{
+				RoundedBox(escWidth/2, escLength/2, escHeight/2, 3);
+				RoundedBox(escWidth/2, escLength/2, escHeight/2, 1.5);
+				
+				
+				if( slice == 0 )
+				{
+					translate([-500,-500,-halfRimDepth]) cube([1000,1000,1000]);
+				}
+				else
+				{
+					translate([-500,-500,-1000+halfRimDepth]) cube([1000,1000,1000]);
+				}
+			}
+			
+			// Locator rim around the edge
+			// openscad is retarded. If I set new values to old variables inside an IF scope, the values are lost outside the IF scope!
+			// Hence the slightly weird repetition of code here.
+			if( slice == 0 )
+			{
+				orad = 3;
+				irad = (3+1.5)/2;
+				difference()
+				{
+					RoundedShell( irad, orad );
+					translate([-500,-500,+halfRimDepth]) cube([1000,1000,1000]);
+				}
+			}
+			if( slice == 1 )
+			{
+				orad = (3+1.5)/2;
+				irad = 1.5;
+				difference()
+				{
+					RoundedShell( irad, orad );
+					translate([-500,-500,-1000-halfRimDepth]) cube([1000,1000,1000]);
+				}
+			}
+		}
+		// Motor lines
+		translate([-(escWidth/2-5), -escLength/2 + 50, 0]) rotate([90,0,0]) cylinder(h=100,d=5,$fn=60);
+		translate([ (escWidth/2-5), -escLength/2 + 50, 0]) rotate([90,0,0]) cylinder(h=100,d=5,$fn=60);
+		translate([              0, -escLength/2 + 50, 0]) rotate([90,0,0]) cylinder(h=100,d=5,$fn=60);
+
+		// Power + Data lines
+		translate([-(escWidth/2-5),  escLength/2 + 50, 0]) rotate([90,0,0]) cylinder(h=100,d=5,$fn=60);
+		translate([ (escWidth/2-5),  escLength/2 + 50, 0]) rotate([90,0,0]) cylinder(h=100,d=5,$fn=60);
+		//translate([              0,  escLength/2 + 0, 0]) cube([10,10,3], center=true);
+		translate([ 0,  escLength/2 + 50, 0]) rotate([90,0,0]) cylinder(h=100,d=5,$fn=60);
+	}
+}
 
 
-
-
+// Arms
 if(1)
 {
 	translate([0,0,motorLen]) SmallArm();
-	translate([0,0,-armThick]) BigArm();
+	translate([0,0,-armThick-spacerThickness]) BigArm();
+}
+
+// Motor
+if(1)
+{
 	translate([armLen,0,0]) Motor( 0 );
 }
 
@@ -293,7 +415,7 @@ if(1)
 	MountingBracket();
 }
 
-if(0)
+if(1)
 {
 // Half Mounting Bracket
 	difference()
@@ -303,6 +425,22 @@ if(0)
 	}
 }
 
-translate([0,0,motorLen + armThick]) LimitLockingBlock(1);
+// Rotation stoppers
+if(1)
+{
+	translate([0,0,motorLen + armThick]) LimitLockingBlock(1);
 
-translate([0,0,-armThick*3]) LimitLockingBlock(-1);
+	translate([0,0,-armThick*3-spacerThickness]) LimitLockingBlock(-1);
+}
+
+// Speed Controller Box Top
+if( 1 )
+{
+	ControllerBox(0);
+}
+
+// Speed Controller Box Bottom
+if( 1 )
+{
+	translate([0,0,30]) ControllerBox(1);
+}
