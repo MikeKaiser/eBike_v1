@@ -28,6 +28,8 @@ spacerThickness = 7.0; // sometimes, if the motor has to be mounted quite low on
 escWidth = 45;
 escLength = 100;
 escHeight = 25;
+escPowerSpacing = 14; // offset from the middle of the ESC
+escMotorSpacing = 9;  // offset from the middle of the ESC
 
 
 module bearing( hei, rIn, rOut, withHole )
@@ -334,6 +336,9 @@ module RoundedShell( irad, orad )
 
 module ControllerBox( slice )
 {
+	outerRadius = 4;
+	innerRadius = 2;
+	middleRadius = (outerRadius + innerRadius) / 2;
 	rimDepth = 0.5;
 	halfRimDepth = rimDepth / 2;
 	
@@ -345,8 +350,8 @@ module ControllerBox( slice )
 			// The Box
 			difference()
 			{
-				RoundedBox(escWidth/2, escLength/2, escHeight/2, 3);
-				RoundedBox(escWidth/2, escLength/2, escHeight/2, 1.5);
+				RoundedBox(escWidth/2, escLength/2, escHeight/2, outerRadius);
+				RoundedBox(escWidth/2, escLength/2, escHeight/2, innerRadius);
 				
 				
 				if( slice == 0 )
@@ -364,8 +369,8 @@ module ControllerBox( slice )
 			// Hence the slightly weird repetition of code here.
 			if( slice == 0 )
 			{
-				orad = 3;
-				irad = (3+1.5)/2;
+				orad = outerRadius;
+				irad = middleRadius;
 				difference()
 				{
 					RoundedShell( irad, orad );
@@ -374,8 +379,8 @@ module ControllerBox( slice )
 			}
 			if( slice == 1 )
 			{
-				orad = (3+1.5)/2;
-				irad = 1.5;
+				orad = middleRadius;
+				irad = innerRadius;
 				difference()
 				{
 					RoundedShell( irad, orad );
@@ -384,13 +389,13 @@ module ControllerBox( slice )
 			}
 		}
 		// Motor lines
-		translate([-(escWidth/2-5), -escLength/2 + 50, 0]) rotate([90,0,0]) cylinder(h=100,d=5,$fn=60);
-		translate([ (escWidth/2-5), -escLength/2 + 50, 0]) rotate([90,0,0]) cylinder(h=100,d=5,$fn=60);
-		translate([              0, -escLength/2 + 50, 0]) rotate([90,0,0]) cylinder(h=100,d=5,$fn=60);
+		translate([-escMotorSpacing, -escLength/2 + 50, 0]) rotate([90,0,0]) cylinder(h=100,d=5,$fn=60);
+		translate([ escMotorSpacing, -escLength/2 + 50, 0]) rotate([90,0,0]) cylinder(h=100,d=5,$fn=60);
+		translate([               0, -escLength/2 + 50, 0]) rotate([90,0,0]) cylinder(h=100,d=5,$fn=60);
 
 		// Power + Data lines
-		translate([-(escWidth/2-5),  escLength/2 + 50, 0]) rotate([90,0,0]) cylinder(h=100,d=5,$fn=60);
-		translate([ (escWidth/2-5),  escLength/2 + 50, 0]) rotate([90,0,0]) cylinder(h=100,d=5,$fn=60);
+		translate([-escPowerSpacing,  escLength/2 + 50, 0]) rotate([90,0,0]) cylinder(h=100,d=5,$fn=60);
+		translate([ escPowerSpacing,  escLength/2 + 50, 0]) rotate([90,0,0]) cylinder(h=100,d=5,$fn=60);
 		//translate([              0,  escLength/2 + 0, 0]) cube([10,10,3], center=true);
 		translate([ 0,  escLength/2 + 50, 0]) rotate([90,0,0]) cylinder(h=100,d=5,$fn=60);
 	}
